@@ -1,9 +1,11 @@
 Conseq
 ======
 
-node-conseq is a small, simple library in the vein of
-[node-seq](http://github.com/substack/node-seq). It can handle node-style
-EventEmitter callbacks as well as error-as-first-argument callbacks.
+node-conseq is a small, simple library for handling the nesting explosion. It
+is heavily inspired by [node-seq](http://github.com/substack/node-seq).
+
+node-conseq can handle node-style EventEmitter callbacks as well as
+error-as-first-argument callbacks.
 
 Examples
 ========
