@@ -50,4 +50,4 @@ Use `this.next` as a callback to proceed to the next function in the chain. Use 
 `parcombined` works like `combined` does for single action steps. `par` is the parallel equivalent of `next`, and `parerror` for `error`.
 
 ## Installing
-Install with `npm install conseq`.
+Install with `npm install conseq`. If you want to run the tests, you'll need to install [zap](https://github.com/nornagon/node-zap).
