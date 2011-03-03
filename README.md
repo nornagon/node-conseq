@@ -37,15 +37,15 @@ Use `this.next` as a callback to proceed to the next function in the chain. Use 
 
 ### Parallel function callbacks
 
-   Seq()
-     .seq(function () {
-			 fs.stat('/etc/passwd', this.parcombined)
-			 fs.stat(process.env['HOME'], this.parcombined)
-     })
-     .seq(function (results) {
-       console.log('/etc/passwd', results[0].isFile() ? "is" : "is not", "a file")
-       console.log(process.env['HOME'], results[1].isDirectory() ? "is" : "is not", "a directory")
-     })
+    Seq()
+      .seq(function () {
+        fs.stat('/etc/passwd', this.parcombined)
+        fs.stat(process.env['HOME'], this.parcombined)
+      })
+      .seq(function (results) {
+        console.log('/etc/passwd', results[0].isFile() ? "is" : "is not", "a file")
+        console.log(process.env['HOME'], results[1].isDirectory() ? "is" : "is not", "a directory")
+      })
 
 `parcombined` works like `combined` does for single action steps. `par` is the parallel equivalent of `next`, and `parerror` for `error`.
 
