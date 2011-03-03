@@ -66,7 +66,52 @@ function Seq() {
 				var args = Array.prototype.slice.call(arguments, 1)
 				sq.next.apply(sq, args)
 			}
-		}
+		},
+		get par () {
+			return sq._constructPar(sq._parCall)
+		},
+		get parerror () {
+			return sq._constructPar(function (idx, args) {
+				pars.error = args
+				sq._parCall(idx, args)
+			})
+		},
+		get parcombined () {
+			return sq._constructPar(function (idx, args) {
+				if (args[0]) { pars.error = [args[0]] }
+				sq._parCall(idx, args.slice(1))
+			})
+		},
+		_constructPar: function (f) {
+			var idx = parIndex++
+			var called = false
+			return function () {
+				if (called) {
+					throw "Callback called twice!"
+				}
+				called = true
+				var args = Array.prototype.slice.call(arguments)
+				f.call(this, idx, args)
+			}
+		},
+		_parCall: function (idx, args) {
+			parIndex--
+			pars[idx] = args.length == 1 ? args[0] : args
+			if (parIndex == 0) {
+				if (pars.error) {
+					var err = pars.error
+					pars = {}
+					sq.error.apply(sq, err)
+				} else {
+					var next_args = []
+					for (var i in pars) {
+						next_args[i] = pars[i]
+					}
+					pars = {}
+					sq.next(next_args)
+				}
+			}
+		},
 	}
 	process.nextTick(function () {
 		sq.catch(function (err) {
