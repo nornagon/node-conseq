@@ -30,6 +30,26 @@ module.exports = {
 				test.finish()
 			})
 	},
+	'catch in the middle': function (test) {
+		Seq()
+			.seq(function () {
+				this.next(6)
+			})
+			.catch(function (e) {
+				assert.ok(false)
+			})
+			.seq(function (x) {
+				assert.equal(x, 6)
+				this.error('foo')
+			})
+			.catch(function (e) {
+				assert.equal(e, 'foo')
+				test.finish()
+			})
+			.catch(function (e) {
+				assert.ok(false)
+			})
+	},
 	'seqfn': function (test) {
 		Seq()
 			.seq(addFour.on(12))
