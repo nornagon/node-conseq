@@ -17,6 +17,19 @@ module.exports = {
 				test.finish()
 			})
 	},
+	'catch': function (test) {
+		Seq()
+			.seq(function () {
+				this.error('foo')
+			})
+			.seq(function () {
+				assert.ok(false)
+			})
+			.catch(function (e) {
+				assert.equal(e, 'foo')
+				test.finish()
+			})
+	},
 	'seqfn': function (test) {
 		Seq()
 			.seq(addFour.on(12))
@@ -34,6 +47,17 @@ module.exports = {
 			.seq(function (y) {
 				assert.equal(y, 7)
 				test.finish()
+			})
+	},
+	'spliced function': function (test) {
+		Seq()
+			.seq(function () {
+				var that = this
+				var x = 3
+				this.seq(function () {
+					assert.equal(that, this)
+					test.finish()
+				})
 			})
 	},
 	'lonely seqfn': function (test) {
