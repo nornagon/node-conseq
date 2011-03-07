@@ -111,5 +111,22 @@ module.exports = {
 				assert.equal(xs[1], 20)
 				test.finish()
 			})
-	}
+	},
+	'seqfns in separate context': function (test) {
+		Seq()
+			.seq(function () {
+				this.foo = 12
+				this.next()
+			})
+			.seq(Seq.fn().seq(function () {
+				assert.ok(this.foo === undefined)
+				this.bar = 13
+				this.next()
+			}))
+			.seq(function () {
+				assert.ok(this.bar === undefined)
+				assert.ok(this.foo === 12)
+				test.finish()
+			})
+	},
 }
