@@ -24,17 +24,19 @@ function SeqFn(run_immediately) {
 	}
 }
 SeqFn.prototype.seq = function (fn) {
-	if (fn instanceof SeqFn) {
-		this._stack = this._stack.concat(fn._stack)
-	} else {
-		fn._seq_type = 'seq'
-		this._stack.push(fn)
+	var fn_proxy = function () {
+		fn.apply(this, arguments)
 	}
+	fn_proxy._seq_type = 'seq'
+	this._stack.push(fn_proxy)
 	return this
 }
 SeqFn.prototype.catch = function (fn) {
-	fn._seq_type = 'catch'
-	this._stack.push(fn)
+	var fn_proxy = function () {
+		fn.apply(this, arguments)
+	}
+	fn_proxy._seq_type = 'catch'
+	this._stack.push(fn_proxy)
 	return this
 }
 SeqFn.prototype.on = function () {
@@ -48,6 +50,18 @@ SeqFn.prototype.run = function () {
 	var sq = new SeqContext(this._stack.slice())
 	sq.next()
 	return this
+}
+SeqFn.prototype.apply = function (ctx, args) {
+	function seq() {
+		ctx.next.apply(ctx, arguments)
+	}
+	function ctch() {
+		ctx.error.apply(ctx, arguments)
+	}
+	seq._seq_type = 'seq'
+	ctch._seq_type = 'catch'
+	var sq = new SeqContext(this._stack.slice().concat([seq,ctch]))
+	sq.next.apply(sq, args)
 }
 
 function SeqContext(stack) {
@@ -107,18 +121,11 @@ SeqContext.prototype = {
 	get seq () {
 		var that = this
 		return function seq(sequence) {
-			if (sequence instanceof SeqFn) {
-				that._stack = sequence._stack.concat(that._stack)
-			} else if (typeof sequence === 'function') {
-				var f = function () {
-					sequence.apply(that, arguments)
-				}
-				f._seq_type = 'seq'
-				that._stack.unshift(f)
-			} else {
-				throw new Error(
-					"Tried to seq() something that wasn't a function or a Seq.fn()")
+			var f = function () {
+				sequence.apply(that, arguments)
 			}
+			f._seq_type = 'seq'
+			that._stack.unshift(f)
 			that.next()
 		}
 	},
