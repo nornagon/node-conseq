@@ -52,4 +52,16 @@ module.exports = {
 				test.finish()
 			})
 	},
+	'immediate callback': function (test) {
+		Seq()
+			.seq(function start() {
+				this.par(4)
+				this.par(16)
+			})
+			.seq(function check(xs) {
+				assert.equal(xs[0], 4)
+				assert.equal(xs[1], 16)
+				test.finish()
+			})
+	},
 }

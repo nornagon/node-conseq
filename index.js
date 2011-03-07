@@ -2,29 +2,55 @@ var assert = require('assert') // to make sure assertion errors in tests get ret
 
 module.exports = Seq
 
-// TODO: would a linked-list of functions be better? Currently if a function
-// calls both next() and error(), weird things happen.
 function Seq() {
-	var stack = []
+	return new SeqFn(true)
+}
+Seq.fn = function () {
+	return new SeqFn(false)
+}
 
-	var pars = {}
+function SeqFn(run_immediately) {
+	// TODO: would a linked-list of functions be better? Currently if a function
+	// calls both next() and error(), weird things happen.
+	this._stack = []
+	if (run_immediately) {
+		var self = this
+		process.nextTick(function () {
+			self.catch(function (err) {
+				console.error(err.stack ? err.stack : err)
+			})
+			self.run()
+		})
+	}
+}
+SeqFn.prototype.seq = function (fn) {
+	if (fn instanceof SeqFn) {
+		this._stack = this._stack.concat(fn._stack)
+	} else {
+		fn._seq_type = 'seq'
+		this._stack.push(fn)
+	}
+	return this
+}
+SeqFn.prototype.catch = function (fn) {
+	fn._seq_type = 'catch'
+	this._stack.push(fn)
+	return this
+}
+SeqFn.prototype.on = function () {
+	var args = Array.prototype.slice.call(arguments)
+	return Seq.fn()
+		.seq(function () {
+			this.next.apply(this, args)
+		}).seq(this)
+}
+SeqFn.prototype.run = function () {
 	var parIndex = 0
+	var pars = {}
+
+	var stack = this._stack.slice()
 
 	var sq = {
-		seq: function (fn) {
-			fn._seq_type = 'seq'
-			stack.push(fn)
-			return sq
-		},
-		catch: function (fn) {
-			fn._seq_type = 'catch'
-			stack.push(fn)
-			return sq
-		},
-		end: function () {
-			// don't perform any more actions
-			stack = []
-		},
 		next: function () {
 			var args = Array.prototype.slice.call(arguments)
 			var fn = stack.shift()
@@ -41,8 +67,6 @@ function Seq() {
 					if (e instanceof assert.AssertionError) { throw e }
 					sq.error(e)
 				}
-			} else {
-				sq.end()
 			}
 		},
 		error: function () {
@@ -55,8 +79,6 @@ function Seq() {
 			}
 			if (fn) {
 				fn.apply(sq, args)
-			} else {
-				sq.end()
 			}
 		},
 		combined: function (err) {
@@ -66,6 +88,10 @@ function Seq() {
 				var args = Array.prototype.slice.call(arguments, 1)
 				sq.next.apply(sq, args)
 			}
+		},
+		seq: function (sequence) {
+			stack = sequence._stack.concat(stack)
+			sq.next()
 		},
 		get par () {
 			return sq._constructPar(sq._parCall)
@@ -91,7 +117,10 @@ function Seq() {
 				}
 				called = true
 				var args = Array.prototype.slice.call(arguments)
-				f.call(this, idx, args)
+				var that = this
+				process.nextTick(function () {
+					f.call(that, idx, args)
+				})
 			}
 		},
 		_parCall: function (idx, args) {
@@ -113,21 +142,7 @@ function Seq() {
 			}
 		},
 	}
-	process.nextTick(function () {
-		sq.catch(function (err) {
-			console.error(err.stack ? err.stack : err)
-		})
-		sq.next()
-	})
-	return sq
-}
 
-/* Seq()
- *  .seq(function () {
- *    file.read('/dagdfg').on('success', this.next)
- *    // ... this(data)
- *  })
- *  .seq(function (data) {
- *    // do things with data
- *  })
- */
+	sq.next()
+	return this
+}
