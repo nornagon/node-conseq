@@ -45,104 +45,129 @@ SeqFn.prototype.on = function () {
 		}).seq(this)
 }
 SeqFn.prototype.run = function () {
-	var parIndex = 0
-	var pars = {}
+	var sq = new SeqContext(this._stack.slice())
+	sq.next()
+	return this
+}
 
-	var stack = this._stack.slice()
+function SeqContext(stack) {
+	this._stack = stack
+	this._parIndex = 0
+	this._pars = {}
+}
 
-	var sq = {
-		next: function () {
+SeqContext.prototype = {
+	get next () {
+		var that = this
+		return function next() {
 			var args = Array.prototype.slice.call(arguments)
-			var fn = stack.shift()
+			var fn = that._stack.shift()
 
 			// skip over any 'catch' functions
 			while (fn && fn._seq_type === 'catch') {
-				fn = stack.shift()
+				fn = that._stack.shift()
 			}
 
 			if (fn) {
 				try {
-					fn.apply(sq, args)
+					fn.apply(that, args)
 				} catch (e) {
 					if (e instanceof assert.AssertionError) { throw e }
-					sq.error(e)
+					that.error(e)
 				}
 			}
-		},
-		error: function () {
+		}
+	},
+	get error () {
+		var that = this
+		return function error() {
 			var args = Array.prototype.slice.call(arguments)
 
 			// skip to the next 'catch' function
-			var fn = stack.shift()
+			var fn = that._stack.shift()
 			while (fn && fn._seq_type !== 'catch') {
-				fn = stack.shift()
+				fn = that._stack.shift()
 			}
 			if (fn) {
-				fn.apply(sq, args)
+				fn.apply(that, args)
 			}
-		},
-		combined: function (err) {
+		}
+	},
+	get combined () {
+		var that = this
+		return function combined(err) {
 			if (err) {
-				sq.error(err)
+				that.error(err)
 			} else {
 				var args = Array.prototype.slice.call(arguments, 1)
-				sq.next.apply(sq, args)
+				that.next.apply(that, args)
 			}
-		},
-		seq: function (sequence) {
-			stack = sequence._stack.concat(stack)
-			sq.next()
-		},
-		get par () {
-			return sq._constructPar(sq._parCall)
-		},
-		get parerror () {
-			return sq._constructPar(function (idx, args) {
-				pars.error = args
-				sq._parCall(idx, args)
-			})
-		},
-		get parcombined () {
-			return sq._constructPar(function (idx, args) {
-				if (args[0]) { pars.error = [args[0]] }
-				sq._parCall(idx, args.slice(1))
-			})
-		},
-		_constructPar: function (f) {
-			var idx = parIndex++
-			var called = false
-			return function () {
-				if (called) {
-					throw "Callback called twice!"
+		}
+	},
+	get seq () {
+		var that = this
+		return function seq(sequence) {
+			if (sequence instanceof SeqFn) {
+				that._stack = sequence._stack.concat(that._stack)
+			} else if (typeof sequence === 'function') {
+				var f = function () {
+					sequence.apply(that, arguments)
 				}
-				called = true
-				var args = Array.prototype.slice.call(arguments)
-				var that = this
-				process.nextTick(function () {
-					f.call(that, idx, args)
-				})
+				f._seq_type = 'seq'
+				that._stack.unshift(f)
+			} else {
+				throw new Error(
+					"Tried to seq() something that wasn't a function or a Seq.fn()")
 			}
-		},
-		_parCall: function (idx, args) {
-			parIndex--
-			pars[idx] = args.length == 1 ? args[0] : args
-			if (parIndex == 0) {
-				if (pars.error) {
-					var err = pars.error
-					pars = {}
-					sq.error.apply(sq, err)
-				} else {
-					var next_args = []
-					for (var i in pars) {
-						next_args[i] = pars[i]
-					}
-					pars = {}
-					sq.next(next_args)
+			that.next()
+		}
+	},
+	get par () {
+		return this._constructPar(this._parCall)
+	},
+	get parerror () {
+		return this._constructPar(function (idx, args) {
+			this._pars.error = args
+			this._parCall(idx, args)
+		})
+	},
+	get parcombined () {
+		return this._constructPar(function (idx, args) {
+			if (args[0]) { this._pars.error = [args[0]] }
+			this._parCall(idx, args.slice(1))
+		})
+	},
+	_constructPar: function (f) {
+		var idx = this._parIndex++
+		var called = false
+		var that = this
+		return function () {
+			if (called) {
+				throw "Callback called twice!"
+			}
+			called = true
+			var args = Array.prototype.slice.call(arguments)
+			process.nextTick(function () {
+				f.call(that, idx, args)
+			})
+		}
+	},
+	_parCall: function (idx, args) {
+		this._parIndex--
+		this._pars[idx] = args.length == 1 ? args[0] : args
+		if (this._parIndex == 0) {
+			if (this._pars.error) {
+				var err = this._pars.error
+				this._pars = {}
+				this.error.apply(this, err)
+			} else {
+				var next_args = []
+				for (var i in this._pars) {
+					next_args[i] = this._pars[i]
 				}
+				this._pars = {}
+				this.next(next_args)
 			}
-		},
-	}
-
-	sq.next()
-	return this
+		}
+	},
 }
