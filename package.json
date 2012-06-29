@@ -1,11 +1,11 @@
 {
-	"name": "conseq",
-	"version": "0.2.0",
+  "name": "conseq",
+  "version": "0.2.1",
   "description": "Small, simple callback chaining for async methods",
   "contributors": [{ "name": "Jeremy Apthorp", "email": "nornagon@nornagon.net" }],
   "repository": {
-  	"type": "git",
-  	"url": "http://github.com/nornagon/node-conseq"
+    "type": "git",
+    "url": "http://github.com/nornagon/node-conseq"
   },
   "main": "./index"
 }
