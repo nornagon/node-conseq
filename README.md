@@ -1,3 +1,4 @@
+[![build status](https://secure.travis-ci.org/nornagon/node-conseq.png)](http://travis-ci.org/nornagon/node-conseq)
 # Conseq
 
 node-conseq is a small, simple library for handling the nesting explosion. It is heavily inspired by [node-seq](http://github.com/substack/node-seq).
